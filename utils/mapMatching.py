@@ -67,7 +67,7 @@ def is_within_bounding_box(trajectory, bounding_box):
 
 
 def geofence_from_bbox(bounding_box):
-    output_geojson_file = 'results/bounding_box_mn.geojson'
+    output_geojson_file = '../results/bounding_box_mn.geojson'
     bounding_box_to_geojson(bounding_box, output_geojson_file)
     geofence = Geofence.from_geojson(output_geojson_file)
     return geofence
