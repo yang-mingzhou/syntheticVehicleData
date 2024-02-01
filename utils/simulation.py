@@ -288,16 +288,16 @@ def run_fastsim_simulation(all_speeds, veh):
     
     
     # Plot results
-    fig, ax = plt.subplots(2, 1, figsize=(9, 5))
-    ax[0].plot(cyc.time_s, sim_drive.fc_kw_in_ach, label='py')
-    ax[0].legend()
-    ax[0].set_ylabel('Engine Input\nPower [kW]')
+#     fig, ax = plt.subplots(2, 1, figsize=(9, 5))
+#     ax[0].plot(cyc.time_s, sim_drive.fc_kw_in_ach, label='py')
+#     ax[0].legend()
+#     ax[0].set_ylabel('Engine Input\nPower [kW]')
 
-    ax[1].plot(cyc.time_s, sim_drive.mph_ach)
-    ax[1].set_xlabel('Cycle Time [s]')
-    ax[1].set_ylabel('Speed [MPH]')
+#     ax[1].plot(cyc.time_s, sim_drive.mph_ach)
+#     ax[1].set_xlabel('Cycle Time [s]')
+#     ax[1].set_ylabel('Speed [MPH]')
 
-    plt.show()
+#     plt.show()
 
     return power_array, cumulative_energy_kWh, speedProfileInKmh
 
@@ -314,7 +314,7 @@ def plot_simulated_energy(cumulative_energy_kWh_simulated):
     
 def cumstomize_veh(veh, weight=21000):
     # Load the spreadsheet
-    xlsx_file = pd.ExcelFile('data/vehModel/Volvo_EV_Model_KP.xlsx')
+    xlsx_file = pd.ExcelFile('../data/vehModel/Volvo_EV_Model_KP.xlsx')
 
     # Load a sheet into a DataFrame by name: Vehicle Model Parameters
     df_parameters = xlsx_file.parse('Vehicle Model Parameters')
@@ -356,7 +356,9 @@ def cumstomize_veh(veh, weight=21000):
 
     return veh
 
-def extract_all_routes_info_from(matched_trip_files):
+    
+def extract_all_routes_info_from(csv_file, net):
+    matched_trip_data = read_matched_trip_data(csv_file)
     # Initialize a list to hold routes_info from all files and trips
     all_routes_info = []
 
@@ -365,74 +367,62 @@ def extract_all_routes_info_from(matched_trip_files):
     vehicles_id_list = []
     # Loop over each file to generate a route file
     # Assumption: all trips start at the same time
-    for csv_file in matched_trip_files:
-        # Read matched trip data for the current file
-        matched_trip_data = read_matched_trip_data(csv_file)
+    for local_trip_idx, _ in matched_trip_data.iterrows():
+        # Global trip index is the current count of num_trips
 
-        # Process each trip within the current file
-        for local_trip_idx, _ in matched_trip_data.iterrows():
-            # Global trip index is the current count of num_trips
+        edgeList = matched_trip_data.loc[local_trip_idx, "matched_path"]
+        nodeList = [edge[0] for edge in edgeList]
+        nodeList.append(edgeList[-1][1])
+        nodeList = valid_nodeList(nodeList, net)
+        edge_route = find_valid_edge_route(nodeList, net)
 
-            edgeList = matched_trip_data.loc[local_trip_idx, "matched_path"]
-            nodeList = [edge[0] for edge in edgeList]
-            nodeList.append(edgeList[-1][1])
-            nodeList = valid_nodeList(nodeList, net)
-            edge_route = find_valid_edge_route(nodeList, net)
+        # Generate trip_id based on the global trip index
+        trip_id = f"t{num_trips}"
+        vehicles_id_list.append(trip_id)
 
-            # Generate trip_id based on the global trip index
-            trip_id = f"t{num_trips}"
-            vehicles_id_list.append(trip_id)
+        # Prepare route information for the current trip
+        route_info = edge_route_to_routes_info(edge_route, trip_id, 0)  # Assuming enter_time is 0 for now
+        all_routes_info.append(route_info)
 
-            # Prepare route information for the current trip
-            route_info = edge_route_to_routes_info(edge_route, trip_id, 0)  # Assuming enter_time is 0 for now
-            all_routes_info.append(route_info)
-
-            # Increment num_trips after processing each trip
-            num_trips += 1
+        # Increment num_trips after processing each trip
+        num_trips += 1
     return all_routes_info, vehicles_id_list
     
-def fastsim_and_save_to(destination_folder, matched_trip_files, velocity_data, edgeSeq_data):
+def fastsim_and_save_to(processed_file_path, csv_file, velocity_data, edgeSeq_data):
     # FASTSim and save
     num_trips = 0
-    for csv_file in matched_trip_files:
-        # Read matched trip data for the current file
-        matched_trip_data = read_matched_trip_data(csv_file)
-        # Process each trip within the current file
-        for local_trip_idx, row in matched_trip_data.iterrows():
+    matched_trip_data = read_matched_trip_data(csv_file)
+    for local_trip_idx, row in matched_trip_data.iterrows():
+        veh_id = f"t{num_trips}" 
 
-            veh_id = f"t{num_trips}" 
-            # fastsim part
-            # Initialized Vehicle description: https://github.com/NREL/fastsim/blob/fastsim-2/python/fastsim/resources/FASTSim_py_veh_db.csv
-            velocityProfile = velocity_data[veh_id]
-            if len(velocityProfile):
-                velocityProfile = [3.6*x for x in velocityProfile]
-                veh = vehicle.Vehicle.from_vehdb(26)
-                veh_weight = matched_trip_data.loc[local_trip_idx, 'weight'][0]
-                veh = cumstomize_veh(veh, veh_weight)   
-                power_array_simulated, cumulative_energy_kWh_simulated, speed_simulated  = run_fastsim_simulation(velocityProfile, veh)
+        # fastsim part
+        # Initialized Vehicle description: https://github.com/NREL/fastsim/blob/fastsim-2/python/fastsim/resources/FASTSim_py_veh_db.csv
+        velocityProfile = velocity_data[veh_id]
+        if len(velocityProfile):
 
-                # Convert the list of edges into a space-separated string if it's not already in this format
-                edgeSeq_str = ' '.join(edgeSeq_data[veh_id])
-                # Convert each float in the velocity_data list to a string and then join them
-                sumoVelocity_str = ' '.join([str(3.6*v) for v in velocity_data[veh_id]])
-                fastsimVelocity_str = ' '.join([str(v) for v in speed_simulated])
-                power_simulated_str = ' '.join([str(p) for p in power_array_simulated])
-                matched_trip_data.loc[local_trip_idx, 'fastsim_velocity'] = fastsimVelocity_str
-                matched_trip_data.loc[local_trip_idx, 'fastsim_power'] = power_simulated_str
-                matched_trip_data.loc[local_trip_idx, 'sumo_path'] = edgeSeq_str
-                matched_trip_data.loc[local_trip_idx, 'sumo_velocity'] = sumoVelocity_str
+            velocityProfile = [3.6*x for x in velocityProfile]
+            veh = vehicle.Vehicle.from_vehdb(26)
+            veh_weight = matched_trip_data.loc[local_trip_idx, 'weight'][0]
+            veh = cumstomize_veh(veh, veh_weight)   
+            power_array_simulated, cumulative_energy_kWh_simulated, speed_simulated  = run_fastsim_simulation(velocityProfile, veh)
 
-                # Increment num_trips after processing each trip
-                num_trips += 1
+            # Convert the list of edges into a space-separated string if it's not already in this format
+            edgeSeq_str = ' '.join(edgeSeq_data[veh_id])
+            # Convert each float in the velocity_data list to a string and then join them
+            sumoVelocity_str = ' '.join([str(3.6*v) for v in velocity_data[veh_id]])
+            fastsimVelocity_str = ' '.join([str(v) for v in speed_simulated])
+            power_simulated_str = ' '.join([str(p) for p in power_array_simulated])
+            matched_trip_data.loc[local_trip_idx, 'fastsim_velocity'] = fastsimVelocity_str
+            matched_trip_data.loc[local_trip_idx, 'fastsim_power'] = power_simulated_str
+            matched_trip_data.loc[local_trip_idx, 'sumo_path'] = edgeSeq_str
+            matched_trip_data.loc[local_trip_idx, 'sumo_velocity'] = sumoVelocity_str
 
-                # After processing the current file, save the processed data to the destination folder
-                base_file_name = os.path.basename(csv_file)  # Get the base name of the current file
-                processed_file_name = base_file_name.replace("_matched", "_processed")
-                processed_file_path = os.path.join(destination_folder, processed_file_name)
-                matched_trip_data.to_csv(processed_file_path, index=False)
+            matched_trip_data.to_csv(processed_file_path, index=False)
+        # Increment num_trips after processing each trip
+        num_trips += 1
     return
     
-
+    
 def main():
     os.environ['PATH'] += ":/home/shekhars/yang7492/.conda/envs/syntheticData/lib/python3.8/site-packages/sumo/bin"
     # Set SUMO_HOME
@@ -441,36 +431,50 @@ def main():
     # To download the graph, in terminal:
     # osmGet.py --bbox="-94.073366,44.403672,-92.696696,45.450154" --prefix Minneapolis -d ../data
     # export SUMO_HOME='/home/shekhars/yang7492/.conda/envs/syntheticData/lib/python3.8/site-packages/sumo'
-    # osmBuild.py --prefix Minneapolis --osm-file data/Minneapolis_bbox.osm.xml --vehicle-classes passenger --netconvert-options="--geometry.remove,--ramps.guess,--tls.guess-signals,--tls.discard-simple,--remove-edges.isolated" --output-directory data
+    # osmBuild.py --prefix Minneapolis --osm-file data/Minneapolis_bbox.osm.xml --vehicle-classes passenger --netconvert-options="--geometry.remove,--ramps.guess,--tls.guess- signals,--tls.discard-simple,--remove-edges.isolated" --output-directory data
     
     net_file = "../data/Minneapolis.net.xml"
     net = sumolib.net.readNet(net_file)
-    
+
     # Get a list of all files to process
     file_pattern = "../data/matchedTrips/Murphy/*_matched.csv"
     matched_trip_files = glob.glob(file_pattern)
 
-    all_routes_info, vehicle_ids = extract_all_routes_info_from(matched_trip_files)
-
-    # After collecting routes_info from all files and trips
-    route_file = "../data/incompelete_routes.xml"
-    save_incomplete_routes_to_xml(all_routes_info, route_file)
-
-    complete_route_file = "../data/complete_routes.rou.xml"
-    complete_routes(route_file, net_file, complete_route_file)
-
-    # SUMO simulation
-    begin = 0
-    end = 14400
-    step_length = 1
-    file_name_config = "sumo.sumocfg"
-    save_sumo_config_to_file(net_file, complete_route_file, begin, end, step_length, file_name_config)
-    velocity_data, edgeSeq_data = sumo_simulation(file_name_config, vehicle_ids)
-
     # Specify the destination folder for processed files
     destination_folder = "../data/synthetic/Murphy"
     os.makedirs(destination_folder, exist_ok=True)  # Create the destination folder if it doesn't exist
-    fastsim_and_save_to(destination_folder, matched_trip_files, velocity_data, edgeSeq_data)
+
+    for csv_file in matched_trip_files:
+        # Determine the name of the processed file
+        base_file_name = os.path.basename(csv_file)  # Get the base name of the current file
+        processed_file_name = base_file_name.replace("_matched", "_processed")
+        processed_file_path = os.path.join(destination_folder, processed_file_name)
+
+        # Check if the processed file already exists
+        if os.path.exists(processed_file_path):
+            continue  # Skip processing this file and move to the next one
+
+        # Read matched trip data for the current file
+        all_routes_info, vehicle_ids = extract_all_routes_info_from(csv_file, net)   
+
+        # After collecting routes_info from all files and trips
+        route_file = "../data/incompelete_routes.xml"
+        save_incomplete_routes_to_xml(all_routes_info, route_file)
+
+        complete_route_file = "../data/complete_routes.rou.xml"
+        complete_routes(route_file, net_file, complete_route_file)
+
+        # SUMO simulation
+        begin = 0
+        end = 14400
+        step_length = 1
+        file_name_config = "sumo.sumocfg"
+        save_sumo_config_to_file(net_file, complete_route_file, begin, end, step_length, file_name_config)
+        velocity_data, edgeSeq_data = sumo_simulation(file_name_config, vehicle_ids)
+
+        # Process the data and save to the destination folder
+        fastsim_and_save_to(processed_file_path, csv_file, velocity_data, edgeSeq_data)
+
 
 if __name__ == "__main__":
     main()
