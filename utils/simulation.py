@@ -424,11 +424,11 @@ def fastsim_and_save_to(processed_file_path, csv_file, velocity_data, edgeSeq_da
     
     
 def main():
+    # Set SUMO_HOME; revise it according to the path to the site-packages folder of SUMO  
     os.environ['PATH'] += ":/home/shekhars/yang7492/.conda/envs/syntheticData/lib/python3.8/site-packages/sumo/bin"
-    # Set SUMO_HOME
     os.environ['SUMO_HOME'] = '/home/shekhars/yang7492/.conda/envs/syntheticData/lib/python3.8/site-packages/sumo'
     
-    # To download the graph, in terminal:
+    # To download the SUMO graph, in terminal:
     # osmGet.py --bbox="-94.073366,44.403672,-92.696696,45.450154" --prefix Minneapolis -d ../data
     # export SUMO_HOME='/home/shekhars/yang7492/.conda/envs/syntheticData/lib/python3.8/site-packages/sumo'
     # osmBuild.py --prefix Minneapolis --osm-file data/Minneapolis_bbox.osm.xml --vehicle-classes passenger --netconvert-options="--geometry.remove,--ramps.guess,--tls.guess- signals,--tls.discard-simple,--remove-edges.isolated" --output-directory data
