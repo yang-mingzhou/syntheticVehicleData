@@ -13,4 +13,4 @@
 #SBATCH -p agsmall                                             
 
 source activate syntheticData
-python simulation.py
+python postprocessing.py
