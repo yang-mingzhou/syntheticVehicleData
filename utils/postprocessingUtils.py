@@ -28,6 +28,21 @@ import xml.dom.minidom
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
 
+# Function to convert edge list to node list
+def edge_list_to_node_list(edges, sumo_net):
+    # Split the edge list string into individual edges
+    node_list = []
+    for edge in edges:
+        if edge.startswith(':'):
+            node_list.append(node_list[-1])
+        else:
+            edge_obj = sumo_net.getEdge(edge)  # Get the edge object
+            from_node_id = edge_obj.getFromNode().getID()  # Get the ID of the origin node
+            to_node_id = edge_obj.getToNode().getID()  # Get the ID of the destination node
+            node_tuple = (from_node_id, to_node_id, 0)  # Create a tuple 
+            node_list.append(node_tuple)
+    return node_list
+
 
 def cal_lanes(lanes_value):
     # Handle lists: assume you want to extract the first valid value
@@ -222,7 +237,8 @@ def extract_osm_edge_feature(edge_gdf, edge_id, prev_edge_id):
         'endpoint_u': osm_edge_feature.signal_u_value, 
         'endpoint_v': osm_edge_feature.signal_v_value,
         'direction_angle': compute_direction_angle(osm_edge_feature),
-        'previous_orientation': previous_orientation_cal(osm_edge_feature, edge_gdf, prev_edge_id)
+        'previous_orientation': previous_orientation_cal(osm_edge_feature, edge_gdf, prev_edge_id),
+        'elevation_change': osm_edge_feature.elevation_change
     }
     return edge_features
 
@@ -231,7 +247,6 @@ def extract_simulated_feature(row, trip_id, position_of_edge, trip_start_index, 
                     'trip_id': (0, trip_id),
                     'position': position_of_edge,
                     'mass': row['weight'][trip_start_index],
-                    'elevation_change': row['altitude_profile'][trip_end_index-1] - row['altitude_profile'][trip_start_index],
                     'energy_consumption_total_kwh': sum(row['total_fuel'][trip_start_index:trip_end_index])*40.3/3600/3.7854,
                     'simulated_energy_consumption_kwh': sum(row['fastsim_power'][sumo_start_index:sumo_end_index])/3600,
                     'time': trip_end_index - trip_start_index,
@@ -242,6 +257,7 @@ def extract_simulated_feature(row, trip_id, position_of_edge, trip_start_index, 
                     'time_acc': row['trip_start_time'],
                     'time_stage': row['trip_start_time'].hour//4 + 1,
                     'week_day': row['trip_start_time'].weekday()+1,
+                    'vehicle_type': row['vehicle_type']
                     }
     return simulated_features
 
@@ -253,7 +269,7 @@ def initialize_edge_df():
         'simulated_energy_consumption_kwh', 'time', 'sumo_time', 'speed', 'sumo_speed', 'fastsim_speed',
         'time_acc', 'time_stage', 'week_day', 'tags', 'osmid', 'road_type', 'speed_limit',
         'length', 'lanes', 'bridge', 'endpoint_u', 'endpoint_v', 'direction_angle',
-        'previous_orientation'
+        'previous_orientation', 'vehicle_type'
     ]
 
     # Initialize the DataFrame with these columns
