@@ -13,4 +13,4 @@
 #SBATCH -p agsmall                                             
 
 source activate syntheticData
-python postprocessing.py
+python syntheticDataGenFromRealData.py

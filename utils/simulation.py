@@ -666,9 +666,9 @@ def simulation(data_file_folder, results_file_folder, input_file_pattern, output
         processed_file_name = base_file_name.replace("_matched", "_processed")
         processed_file_path = os.path.join(destination_folder, processed_file_name)
 
-#         # Check if the processed file already exists
-#         if os.path.exists(processed_file_path):
-#             continue  # Skip processing this file and move to the next one
+        # Check if the processed file already exists
+        if os.path.exists(processed_file_path):
+            continue  # Skip processing this file and move to the next one
 
         # Read matched trip data for the current file
         all_routes_info, vehicle_ids = extract_all_routes_info_from(csv_file, net)  

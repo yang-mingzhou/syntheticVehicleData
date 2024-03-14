@@ -1,4 +1,4 @@
-name: syntheticData
+name: testSyntheticData
 channels:
   - conda-forge
   - defaults
@@ -234,4 +234,3 @@ dependencies:
     - sumolib==1.18.0
     - tomli==2.0.1
     - traci==1.18.0
-prefix: /home/shekhars/yang7492/.conda/envs/syntheticData
