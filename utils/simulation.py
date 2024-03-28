@@ -337,6 +337,9 @@ def osmnx_paths_to_sumo_routes(osm_path_list, sumo_net):
     # Assumption: all trips start at the same time
     for nodeList in osm_path_list:
         
+        if nodeList is None:
+            continue
+        
         # Generate trip_id based on the global trip index
         trip_id = f"t{num_trips}"
         vehicles_id_list.append(trip_id) 
@@ -505,6 +508,62 @@ def convert_sumo_paths_to_osmnx_edge(sumo_edgeSeq_data, osmnx_edge_gdf, sumo_net
         sumo_path = match_sumo_to_osmnx(consolidated_sumo_path, osmnx_edge_gdf)
         sumo_path_list.append(sumo_path)
     return sumo_path_list
+
+
+def construct_complete_route(sumo_home_path, end_time_for_departure, number_of_trips, net_file, od_file, output_file):
+    # Construct the path to randomTrips.py using SUMO_HOME
+    random_trips_script = os.path.join(sumo_home_path, 'tools', 'randomTrips.py')
+
+    # Customizable arguments
+    period = end_time_for_departure/number_of_trips   
+
+    # Assemble the args list dynamically
+    args = [
+        '-n', net_file,
+        '-o', od_file,
+        '-e', str(end_time_for_departure),  # Convert numbers to strings
+        '-p' , str(period),
+        '--prefix', 't',
+        '--route-file', output_file    
+    ]
+
+    # Combine command and args for the subprocess.run() call
+    full_command = ['python', random_trips_script] + args
+
+    # Run the command
+    result = subprocess.run(full_command, capture_output=True, text=True)
+
+    # Check if the command was executed successfully
+    if result.returncode == 0:
+        print("Command executed successfully")
+        # Optionally, print the standard output
+        print("Output:", result.stdout)
+    else:
+        print("Error executing command")
+        # Optionally, print the error
+        print("Error:", result.stderr)
+        
+def add_speed_attributes_to_vehicles(xml_file, depart_speed="0.00", arrival_speed="0.00"):
+    """
+    Add departSpeed and arrivalSpeed attributes to all vehicle elements in an XML file.
+
+    :param xml_file: Path to the XML file to modify
+    :param depart_speed: The default departure speed to set for all vehicles
+    :param arrival_speed: The default arrival speed to set for all vehicles
+    """
+    # Parse the XML file
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+
+    # Iterate over all vehicle elements and add the departSpeed and arrivalSpeed attributes
+    for vehicle in root.findall('vehicle'):
+        vehicle.set('departSpeed', depart_speed)
+        vehicle.set('arrivalSpeed', arrival_speed)
+
+    # Save the modified XML back to the file
+    tree.write(xml_file, encoding='utf-8', xml_declaration=True)
+
+
     
     
 # Function to generate a random datetime within the last year
@@ -513,7 +572,7 @@ def random_datetime_last_year():
     seconds_back = random.randint(0, 86399)  # Maximum number of seconds in a day
     return datetime.now() - timedelta(days=days_back, seconds=seconds_back)
 
-def generate_synthetic_csv(random_paths, velocity_data, edgeSeq_data, vehicle_type, edge_gdf, sumo_net):
+def generate_synthetic_csv(velocity_data, edgeSeq_data, vehicle_type, edge_gdf, sumo_net):
 
     num_rows = len(velocity_data)  # Desired number of rows in your DataFrame
      
@@ -533,7 +592,7 @@ def generate_synthetic_csv(random_paths, velocity_data, edgeSeq_data, vehicle_ty
     # Calculating travel times as the length of velocity profiles
     travel_times = [len(vp) for vp in velocity_profiles]
     
-    matched_paths = convert_node_paths_to_edge_paths(random_paths)
+#     matched_paths = convert_node_paths_to_edge_paths(random_paths)
     
     road_ids = convert_sumo_paths_to_osmnx_edge(edgeSeq_data, edge_gdf, sumo_net)
    
@@ -547,7 +606,7 @@ def generate_synthetic_csv(random_paths, velocity_data, edgeSeq_data, vehicle_ty
         'total_fuel': total_fuels,
         'ambTemperature': ambTemperatures,
         'trajectory': trajectories,
-        'matched_path': matched_paths,
+        'matched_path': road_ids,
         'coordinate_id': coordinate_ids,
         'road_id': road_ids,
         'vehicle_type': vehicle_type

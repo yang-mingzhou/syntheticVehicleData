@@ -45,6 +45,9 @@ def read_data(csv_file):
     # Remove rows with any empty values
     df = df.dropna()
     
+    if not len(df):
+        return df
+    
     # Convert string representations of lists or tuples back to lists or tuples
 #     columns_to_eval = ['altitude_profile', 'velocity_profile', 'weight', 'total_fuel', 'trajectory', 
 #                        'matched_path', 'coordinate_id', 'road_id']
@@ -60,7 +63,8 @@ def read_data(csv_file):
         df[column] = pd.to_datetime(df[column], format='%Y-%m-%d %H:%M:%S')
 
     # Convert space-separated strings to lists of floats
-    float_list_columns = ['fastsim_velocity', 'fastsim_power', 'sumo_velocity']
+    float_list_columns = ['fastsim_velocity', 'fastsim_power', 'sumo_velocity']    
+    
     for column in float_list_columns:
         df[column] = df[column].apply(lambda x: [float(i) for i in x.split()])
 
@@ -192,14 +196,24 @@ def postprocessing(data_file_folder, results_file_folder, input_folder, output_f
     # Iterate over all CSV files in the data folder
     for file_name in glob.glob(pattern):
         print(f"Processing {file_name}...")
+        
+        # Generate output file name based on input file
+        base_name = os.path.basename(file_name)
+        
+        output_file_name = os.path.join(output_folder, f"edge_level_{base_name}")
+        
+        # Check if the processed file already exists
+        if os.path.exists(output_file_name):
+            continue  # Skip processing this file and move to the next one
 
         # Assuming read_data, edge_list_to_node_list, extracted_matched_edges, trip_to_edge_df are defined
         processed_df = read_data(file_name)
+        
+        if not len(processed_df):
+            continue
+               
         df_edges = process_one_file(processed_df, edge_gdf, sumo_net)
-        # Generate output file name based on input file
-        base_name = os.path.basename(file_name)
-        output_file_name = os.path.join(output_folder, f"edge_level_{base_name}")
-
+        
         # Save the processed DataFrame to a new CSV in the output folder
         df_edges.to_csv(output_file_name, index=False)
 

@@ -53,5 +53,8 @@ postprocessing(data_file_folder, results_file_folder, simulation_output_folder, 
 edge_level_file_pattern = os.path.join(edge_level_output_folder, "*_processed.csv")
 output_file_folder =  os.path.join(data_file_folder, "features/Murphy")
 # process synthetic data or real-world data 
-synthetic_data_flg = True # or False for processing real-world data
+# synthetic_data_flg = True # or False for processing real-world data
+# feature_extraction(data_file_folder, results_file_folder, edge_level_file_pattern, output_file_folder, synthetic_data_flg)
+
+synthetic_data_flg = False 
 feature_extraction(data_file_folder, results_file_folder, edge_level_file_pattern, output_file_folder, synthetic_data_flg)

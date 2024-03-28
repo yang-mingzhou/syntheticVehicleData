@@ -30,7 +30,7 @@ from utils.featureExtraction import feature_extraction
 # postprocessing to edge level
 from utils.postprocessing import process_edge_gdf, process_one_file, edge_list_to_node_list
 
-number_of_trips = 100
+number_of_trips = 10
 
 data_file_folder = "data"
 results_file_folder = "results"
@@ -54,33 +54,20 @@ node_gdf, edge_gdf = ox.utils_graph.graph_to_gdfs(osmnx_net)
 net_file = os.path.join(data_file_folder, "Minneapolis.net.xml")
 sumo_net = sumolib.net.readNet(net_file)
 
-
-# generate k trip files
-node_ids = node_gdf.index.tolist()  # List of node IDs
-
-origins = []
-destinations = []
-
-for _ in range(number_of_trips):
-    origin, destination = random.sample(node_ids, 2)  # Sample two unique nodes
-    origins.append(origin)
-    destinations.append(destination)
-
-# random node paths
-random_paths = ox.routing.shortest_path(osmnx_net, origins, destinations, weight='length', cpus=1)
-
-
-# Convert osmnx paths to sumo paths
-all_routes_info, vehicle_ids = sim.osmnx_paths_to_sumo_routes(random_paths, sumo_net)   
-
 # SUMO simulation configuration
+# file name for random O-D pairs
+od_file = os.path.join(data_file_folder, "incompelete_routes.xml")
 
-# After collecting routes_info from all files and trips
-route_file = os.path.join(data_file_folder, "incompelete_routes.xml")
-sim.save_incomplete_routes_to_xml(all_routes_info, route_file)
-
+# file name for complete routes
 complete_route_file = os.path.join(data_file_folder, "complete_routes.rou.xml")
-sim.complete_routes(route_file, net_file, complete_route_file)
+
+# generate one trip every second
+sim.construct_complete_route(os.environ['SUMO_HOME'], number_of_trips, number_of_trips, net_file, od_file, complete_route_file)
+
+sim.add_speed_attributes_to_vehicles(complete_route_file, "0.00", "0.00")
+
+
+vehicle_ids = [f"t{i}" for i in range(number_of_trips)]
 
 begin = 0
 end = 14400 # maximum simulated travel time 
@@ -91,7 +78,6 @@ sim.save_sumo_config_to_file(net_file, complete_route_file, begin, end, step_len
 # sumo simulation
 velocity_data, edgeSeq_data = sim.sumo_simulation(file_name_config, vehicle_ids)
 
-
 # Generate synthetic vehicle type
 # 62 predefined vehicle types in FASTSim: https://github.com/NREL/fastsim/blob/fastsim-2/python/fastsim/resources/FASTSim_py_veh_db.csv
 # vehicle_type = np.random.randint(1, 27, number_of_trips)
@@ -99,11 +85,10 @@ velocity_data, edgeSeq_data = sim.sumo_simulation(file_name_config, vehicle_ids)
 vehicle_type = [0 for _ in range(number_of_trips)]
 
 # generte a dataframe of the synthetic data based on SUMO results
-csv_file = sim.generate_synthetic_csv(random_paths, velocity_data, edgeSeq_data, vehicle_type, edge_gdf, sumo_net)
+csv_file = sim.generate_synthetic_csv(velocity_data, edgeSeq_data, vehicle_type, edge_gdf, sumo_net)
 
 # Process the data (trip level) and save to the destination folder
 simulated_data = sim.fastsim(csv_file, velocity_data, edgeSeq_data, data_file_folder)
-
 
 # Convert space-separated strings to lists of floats
 float_list_columns = ['fastsim_velocity', 'fastsim_power', 'sumo_velocity']
