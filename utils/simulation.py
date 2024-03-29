@@ -486,8 +486,8 @@ def match_sumo_to_osmnx(consolidated_sumo_path, osmnx_gdf):
                     if last_valid_match:
                         matched_path.extend([last_valid_match] * (j - i))
                     else:
-                        # Placeholder for initial unmatched path
-                        matched_path.extend([('Placeholder', 'Placeholder', 0)] * (j - i))
+                        # cannot be matched
+                        return []
                     i = j
                     
         except ValueError as e:
@@ -524,7 +524,8 @@ def construct_complete_route(sumo_home_path, end_time_for_departure, number_of_t
         '-e', str(end_time_for_departure),  # Convert numbers to strings
         '-p' , str(period),
         '--prefix', 't',
-        '--route-file', output_file    
+        '--route-file', output_file,
+        '--min-distance', '100.0'
     ]
 
     # Combine command and args for the subprocess.run() call

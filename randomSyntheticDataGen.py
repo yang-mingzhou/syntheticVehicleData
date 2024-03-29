@@ -30,7 +30,7 @@ from utils.featureExtraction import feature_extraction
 # postprocessing to edge level
 from utils.postprocessing import process_edge_gdf, process_one_file, edge_list_to_node_list
 
-number_of_trips = 10
+number_of_trips = 1000
 
 data_file_folder = "data"
 results_file_folder = "results"
@@ -90,10 +90,10 @@ csv_file = sim.generate_synthetic_csv(velocity_data, edgeSeq_data, vehicle_type,
 # Process the data (trip level) and save to the destination folder
 simulated_data = sim.fastsim(csv_file, velocity_data, edgeSeq_data, data_file_folder)
 
-# Convert space-separated strings to lists of floats
+# Convert space-separated strings to lists of floats or handle already-converted floats
 float_list_columns = ['fastsim_velocity', 'fastsim_power', 'sumo_velocity']
 for column in float_list_columns:
-    simulated_data[column] = simulated_data[column].apply(lambda x: [float(i) for i in x.split()])
+    simulated_data[column] = simulated_data[column].apply(lambda x: [float(i) for i in x.split()] if isinstance(x, str) else x)
 
 # Convert space-separated strings to lists
 simulated_data['sumo_path'] = simulated_data['sumo_path'].str.split()
