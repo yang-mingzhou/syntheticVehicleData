@@ -13,8 +13,13 @@ B. Install FASTsim and SUMO within the environment
 
 * Any other libraries and their versions are listed in environment.yml
 
-C. ```source activate syntheticData```
-```python syntheticDataGenFromRealData.py```
+C. Execution:
+
+1) Activate the conda env: ```source activate syntheticData```
+
+2a) Generate synthetic data from read data: ```python syntheticDataGenFromRealData.py```
+
+2b) Generate synthetic data randomly (the trips are generated from shortest paths between random origin-destination pairs):
 ```python randomSyntheticDataGen.py```
 
 
