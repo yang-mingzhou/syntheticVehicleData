@@ -17,9 +17,11 @@ C. Execution:
 
 1) Activate the conda env: ```source activate syntheticData```
 
-2a) Generate synthetic data from read data: ```python syntheticDataGenFromRealData.py```
+2) Generate synthetic data from read data: ```python syntheticDataGenFromRealData.py```
 
-2b) Generate synthetic data randomly (the trips are generated from shortest paths between random origin-destination pairs):
+or 
+
+3) Generate synthetic data randomly (the trips are generated from shortest paths between random origin-destination pairs):
 ```python randomSyntheticDataGen.py```
 
 
